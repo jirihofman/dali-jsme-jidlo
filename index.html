@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="cs">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.css" rel="stylesheet">
+	<link href="dist/jquery.CalendarHeatmap.min.css" rel="stylesheet" type="text/css">
+	<link href="dist/main.css" rel="stylesheet" type="text/css">
+
+	<script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
+		integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.js"></script>
+	<script src="dist/jquery.CalendarHeatmap.js"></script>
+	<script src="dist/util.js"></script>
+
+	<title>Dali jsme jídlo</title>
+
+	<script type="text/javascript">
+
+		let file = null;
+		const filePlaceholder = 'Přesuňte sem datový soubor \npro automatické načtení';
+		const calendarOptions = {
+			title: "Přehled za poslední rok",
+			tooltips: {
+				show: true,
+				options: {}
+			}
+		};
+
+		$().ready(function() {
+
+			console.group("DOM ready")
+			renderTables([]);
+			console.log("Preparing calendar ...")
+			$("#heatmap").CalendarHeatmap([], calendarOptions);
+			console.log("Calendar prepared")
+			console.log("Adding handlers ...")
+			$('#file').on('change', onFileChange);
+			$('#file').attr('data-title', filePlaceholder);
+			document.getElementById('loadDemoData').addEventListener('click', onLoadDemoData);
+			console.log("Handlers added")
+			console.groupEnd()
+		});
+
+	</script>
+</head>
+
+<body>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+		integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+		crossorigin="anonymous"></script>
+
+	<div class="container">
+		<header>
+			<nav class='navbar navbar-expand-lg navbar-light bg-light'>
+				<div class='container-fluid'>
+					<a class='navbar-brand' href='#' id="header-brand">Dali jsme jídlo.</a>
+
+					<button class='navbar-toggler' type='button' data-bs-toggle='collapse'
+						data-bs-target='#navbarSupportedContent' aria-controls='navbarSupportedContent'
+						aria-expanded='false' aria-label='Toggle navigation'>
+						<div class='navbar-toggler-icon' />
+					</button>
+					<div class='collapse navbar-collapse' id='navbarSupportedContent'>
+						<ul class='navbar-nav me-auto mb-2 mb-lg-0'>
+							<li class="nav-item">
+								<a class="nav-link" title="Jak získat soubor?" role="button" data-bs-toggle="modal"
+									data-bs-target="#how-to-get-profile-file">Jak získat datový soubor?</a>
+							</li>
+							<li class='nav-item'><a class='nav-link' title='O Aplikaci' role='button'
+									data-bs-toggle='modal' data-bs-target='#exampleModal'>O Aplikaci</a></li>
+						</ul>
+					</div>
+				</div>
+			</nav>
+
+			<div class="modal fade" id="how-to-get-profile-file" tabindex="-1"
+				aria-labelledby="how-to-get-profile-file-label" aria-hidden="true">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="how-to-get-profile-file-label">Jak získat data z damejidlo.cz?
+							</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<ol>
+								<li>Přihlásit se na <a href="damejidlo.cz" target="_blank">damejidlo.cz</a></li>
+								<li>
+									Přejít do profilu.<br>
+									<img src="img/step1.png" alt="Krok 1 - přihlásit se" width="250px">
+								</li>
+								<li>
+									Stáhnout JSON soubor<br>
+									<img src="img/step2.png" alt="Krok 2 - Stáhnout JSON v profilu" width="400px">
+								</li>
+								<li>
+									Nahrát JSON do apliakce <b>Dali jsme jídlo</b><br>
+									<img src="img/step3.png" alt="Krok 3 - Nahrát JSON soubor" width="400px">
+								</li>
+							</ol>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+				aria-hidden="true">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="exampleModalLabel">O aplikaci <b>Dali jsme jídlo</b></h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<p>
+								Tato aplikace, <b>Dali jsme jídlo</b>, slouží pro rychlé zobrazení dat ze serveru
+								damejidlo.cz. Snadno a rychle zjistíte:
+							<ul>
+								<li>
+									celkovou utracenou částku
+								</li>
+								<li>
+									počet objednávek
+								</li>
+								<li>
+									nejoblíbenější restaurace a jídla
+								</li>
+							</ul>
+							Přehledně jsou zobrazeny objednávky za poslední rok.
+							</p>
+							<p>
+								<b>Dali jsme jídlo</b> nemá nic společného se serverem damejidlo.cz. Obsah souboru je
+								zpracován přímo ve Vašem prohlížeči. Žádná data nejsou odeslána na náš server, ani je
+								zde neukládáme. Nezpracováváme ani žádná jiná Vaše data.
+							</p>
+							<table>
+								<tbody>
+									<tr>
+										<th>Verze</th>
+										<td>0.1.1</td>
+									</tr>
+									<tr>
+										<th>Dotazy / chyby</th>
+										<td><a href="https://github.com/jirihofman/dali-jsme-jidlo/issues"
+												target="_blank" rel="noreferrer">dali-jsme-jidlo</a></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<div class="modal-footer"><iframe
+								src="https://ghbtns.com/github-btn.html?user=jirihofman&amp;repo=dali-jsme-jidlo&amp;type=star&amp;count=true&amp;size=large&amp;v=2"
+								frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe><iframe
+								src="https://github.com/sponsors/jirihofman/button" title="Sponsor jirihofman"
+								height="35" width="116" style="border:0"></iframe></div>
+					</div>
+				</div>
+			</div>
+		</header>
+		<main>
+			<section>
+				<div id="profile">
+					<section>
+						<div class="container py-1">
+							<div class="row d-flex justify-content-center align-items-center">
+								<div class="col-sm-12 col-xl-6">
+									<button type="button" class="btn btn-primary btn-block"
+										onclick="document.getElementById('file').click()">Nahrát JSON soubor z
+										disku</button>
+									<button class="btn btn-info col-sm-2" id="loadDemoData"
+										title="Zobrazí data demo profilu. Není nutné nahrávat soubor.">Demo</button>
+									<div class="form-group inputDnD">
+										<input type="file" class="form-control-file text-primary font-weight-bold"
+											id="file" accept="application/JSON">
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="container py-1">
+							<div class="row d-flex justify-content-center align-items-center">
+								<div class="col-md-12 col-xl-6">
+									<div class="card" style="border-radius: 15px;">
+										<div class="card-body text-center">
+											<h4 class="mb-2 data" id="profile-name">Jméno</h4>
+											<p class="text-muted mb-4 data">
+												<span id="profile-email">Jméno</span>
+												<span class="mx-2 data" id="profile-phone">Telefon</span>
+											</p>
+											<p class="text-muted mb-4 data" id="profile-addresses">Adresy</p>
+											<div class="d-flex justify-content-between text-center mt-5 mb-2">
+												<div>
+													<p class="mb-2 h5 data" id="orders-total">0</p>
+													<p class="text-muted mb-0">Celkem objednávek</p>
+												</div>
+												<div class="px-3">
+													<p class="mb-2 h5 data" id="costs-total">0</p>
+													<p class="text-muted mb-0">Celkem zaplaceno</p>
+												</div>
+												<div>
+													<p class="mb-2 h5 data" id="costs-avg">0</p>
+													<p class="text-muted mb-0">Průměrná cena objednávky</p>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="container py-1">
+							<div class="row d-flex justify-content-center align-items-center">
+								<div class="col-md-12 col-xl-6">
+									<div class="card" style="border-radius: 15px;">
+										<div class="card-body text-center">
+											<div class="row d-flex justify-content-center align-items-center"
+												id="heatmap"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+
+						<div class="container py-1">
+							<div class="row d-flex justify-content-center align-items-center">
+								<div class="col-md-12 col-xl-6">
+									<div class="card" style="border-radius: 15px;">
+										<div class="card-body text-center">
+											<table id="table-restaurants" class="table">
+												<thead>
+													<tr>
+														<th data-field="restaurant" class="col-10">Restaurace</th>
+														<th data-field="count" class="col-2">Počet</th>
+													</tr>
+												</thead>
+											</table>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="container py-1">
+							<div class="row d-flex justify-content-center align-items-center">
+								<div class="col-md-12 col-xl-6">
+									<div class="card" style="border-radius: 15px;">
+										<div class="card-body text-center">
+											<table id="table-price-range" class="table">
+												<thead>
+													<tr>
+														<th data-field="range" class="col-10">Cena</th>
+														<th data-field="count" class="col-2">Počet</th>
+													</tr>
+												</thead>
+											</table>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+				</div>
+			</section>
+		</main>
+	</div>
+</body>
+
+</html>
