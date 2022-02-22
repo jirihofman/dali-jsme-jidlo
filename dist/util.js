@@ -71,6 +71,7 @@ function renderTables(orders = []) {
 	console.log("clearing tables ...")
 	$('#table-restaurants').bootstrapTable('destroy');
 	$('#table-price-range').bootstrapTable('destroy');
+	$('#table-meals').bootstrapTable('destroy');
 	console.log("rendering tables ...")
 
 	const restaurantCount = _.countBy(orders, 'restaurant_name');
@@ -100,6 +101,45 @@ function renderTables(orders = []) {
 	$('#table-price-range').bootstrapTable({
 		data: priceRangeArray
 	});
+
+	$('#table-meals').bootstrapTable({
+		data: getMealsByName(orders)
+	});
+}
+
+function getMealsByName(orders) {
+	const meals = _.flatMap(orders, order => order.cart.items);
+	const grouped = [];
+
+	meals.forEach(meal => {
+		const group = grouped[meal.name];
+		if (group) {
+			group.count += meal.quantity;
+			group.total += meal.quantity * meal.price;
+		} else {
+			grouped[meal.name] = {
+				count: meal.quantity,
+				total: meal.quantity * meal.price
+			}
+		}
+	});
+
+	const groupedArray = _.keys(grouped).map(key => {
+		const group = grouped[key];
+
+		return {
+			name: key,
+			count: group.count,
+			total: group.total
+		}
+	})
+	
+	const mealCountsArray = groupedArray
+		.map(group => ({ meal: group.name, count: group.count, total: group.total }))
+		.sort((a, b) => a.count > b.count ? -1 : 1)
+		.slice(0, 20); // Only top 20 most ordered
+
+	return mealCountsArray;
 }
 
 function getTotalCost(orders) {
