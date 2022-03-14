@@ -1,13 +1,15 @@
 function onLoadDemoData() {
 	$("#file").val(null);
 	renderAll(demoData);
+	file = demoData;
 	$('#file').attr("data-title", filePlaceholder + '\nZobrazuji demo data');
 }
 
 function onFileChange(event) {
 	const reader = new FileReader();
 	reader.onload = onReaderLoad;
-	reader.readAsText(event.target.files[0]);
+	file = event.target.files[0];
+	reader.readAsText(file);
 }
 
 function renderAll(file) {
@@ -165,6 +167,23 @@ function getCalendarData(orders) {
 	})
 
 	return _.values(calendarData);
+}
+
+function onMonthLabelClick(evt) {
+	const month = $(evt.target).data('month');
+	const year = $(evt.target).data('year');
+	let orders = (file && file.orders) || [];
+	
+	if ($(evt.target).parents('.ch-month').hasClass('border-active')) {
+		$('.ch-month').removeClass('border-active').removeClass('opacity-50');
+	} else {
+		orders = file && file.orders.filter(order => new Date(order.created_at).getMonth() === month && new Date(order.created_at).getFullYear() === year) || [];
+		$('.ch-month').removeClass('border-active').addClass('opacity-50');
+		$(evt.target).parents('.ch-month').addClass('border-active').removeClass('opacity-50');;
+	}
+
+	renderCosts(orders);
+	renderTables(orders);
 }
 
 const demoData = {

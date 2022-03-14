@@ -25,6 +25,7 @@
 		let file = null;
 		const filePlaceholder = 'Přesuňte sem datový soubor \npro automatické načtení';
 		const calendarOptions = {
+			onMonthLabelClick,
 			title: "Přehled za poslední rok",
 			tooltips: {
 				show: true,
@@ -144,7 +145,7 @@
 								<tbody>
 									<tr>
 										<th>Verze</th>
-										<td>0.1.2</td>
+										<td>0.2.0</td>
 									</tr>
 									<tr>
 										<th>Dotazy / chyby</th>
@@ -194,7 +195,7 @@
 												<span class="mx-2 data" id="profile-phone">Telefon</span>
 											</p>
 											<p class="text-muted mb-4 data" id="profile-addresses">Adresy</p>
-											<div class="d-flex justify-content-between text-center mt-5 mb-2">
+											<div class="d-flex justify-content-between text-center mt-5 mb-2" id="costs">
 												<div>
 													<p class="mb-2 h5 data" id="orders-total">0</p>
 													<p class="text-muted mb-0">Celkem objednávek</p>

@@ -36,8 +36,8 @@
                     show: true,
                     align: "right",
                     minLabel: "Méně",
-                    maxLabel: "více",
-                    divider: " to "
+                    maxLabel: "Více",
+                    divider: " až "
                 },
                 tooltips: {
                     show: false,
@@ -78,7 +78,6 @@
                                     if ( this._isNumeric( dates[ h ].date ) ) {
                                         objDate = parseInt( dates[ h ].date );
                                     }
-                                    console.log("ooooo", dates[h])
                                     arr.push( {
                                         "count": parseInt( dates[ h ].count ),
                                         "date": this._dateFormat( objDate ),
@@ -87,7 +86,7 @@
                                 }
                                 return arr;
                             } else {
-                                    console.log( "Invalid Object format." );
+                                    console.error( "Invalid Object format." );
                                 return null;
                             }
                         } else if ( [ "string", "date", "number" ].indexOf( arrtype ) > -1 ) {
@@ -110,11 +109,11 @@
                                 }
                                 return arr;
                             } else {
-                                console.log( "Invalid Date format." );
+                                console.error( "Invalid Date format." );
                                 return null;
                             }
                         } else {
-                            console.log( "Invalid format." );
+                            console.error( "Invalid format." );
                             return null;
                         }
                     } else if ( Array.isArray( dates ) && dates.length === 0 ) {
@@ -133,7 +132,7 @@
                                 return data;
                             }
                         } else {
-                            console.log( "Invalid Date format." );
+                            console.error( "Invalid Date format." );
                             return null;
                         }
                     } else {
@@ -484,9 +483,14 @@
                     $( ".ch-month:last", this.element )
                         .append( "<div class=\"ch-weeks\"></div>" );
 
+                    const $monthLabel = $('<div>')
+                        .on('click', onMonthLabelClick)
+                        .addClass('ch-month-label')
+                        .text(monthName)
+                        .data('month', month)
+                        .data('year', year);
                     if ( this.settings.labels.months ) {
-                        $( ".ch-month:last", this.element )
-                        .append( "<div class=\"ch-month-label\">" + monthName + "</div>" );
+                        $( ".ch-month:last", this.element).append($monthLabel);
                     }
 
                     // Get the number of days for the month

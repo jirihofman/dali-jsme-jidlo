@@ -39,3 +39,20 @@
 	line-height: 2em;
 	margin-top: 5px;
 }
+
+.ch-month-label {
+	cursor: pointer;
+}
+
+.ch-month {
+	border: 1px solid transparent;
+}
+
+.border-active {
+	border: 1px dashed #dc1c22;
+	border-radius: 2px;
+}
+
+.opacity-50 {
+	opacity: 50%;
+}
