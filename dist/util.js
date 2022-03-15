@@ -177,7 +177,8 @@ function onMonthLabelClick(evt) {
 	if ($(evt.target).parents('.ch-month').hasClass('border-active')) {
 		$('.ch-month').removeClass('border-active').removeClass('opacity-50');
 	} else {
-		orders = file && file.orders.filter(order => new Date(order.created_at).getMonth() === month && new Date(order.created_at).getFullYear() === year) || [];
+		// TODO: use moment, not this ugly hack for safari: https://stackoverflow.com/questions/4310953/invalid-date-in-safari
+		orders = file && file.orders.filter(order => new Date(order.created_at.replace(/ /g, "T")).getMonth() === month && new Date(order.created_at.replace(/ /g, "T")).getFullYear() === year) || [];
 		$('.ch-month').removeClass('border-active').addClass('opacity-50');
 		$(evt.target).parents('.ch-month').addClass('border-active').removeClass('opacity-50');;
 	}
