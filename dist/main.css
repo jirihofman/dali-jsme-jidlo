@@ -42,6 +42,7 @@
 
 .ch-month-label {
 	cursor: pointer;
+	text-decoration: underline;
 }
 
 .ch-month {
