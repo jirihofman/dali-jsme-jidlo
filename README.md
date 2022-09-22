@@ -1,9 +1,5 @@
 # Intro
-This is just a proof of concept, quick and dirty.
+This is quick and dirty page to show how much you spent on [damejidlo.cz](https://damejidlo.cz).
 
 # Roadmap
-- ESLint
-- convert to React
-- use Next.js
-- clickable table rows and/or calendar heatmap
-- show map
+No improvements planned. Ping me if you feel something is missing. Or even better - create an issue or PR.
