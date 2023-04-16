@@ -109,11 +109,18 @@ function renderTables(orders = []) {
 	});
 }
 
+const mealNamesToBeMerged = {
+	'SINGLE BIG TASTY BACON VELKÉ MCMENU™': 'SINGLE BIG TASTY BACON VELKÉ MCMENU',
+};
+
 function getMealsByName(orders) {
 	const meals = _.flatMap(orders, order => order.cart.items);
 	const grouped = [];
 
 	meals.forEach(meal => {
+		if (mealNamesToBeMerged[meal.name]) {
+			meal.name = mealNamesToBeMerged[meal.name];
+		}
 		const group = grouped[meal.name];
 		if (group) {
 			group.count += meal.quantity;
