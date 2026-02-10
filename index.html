@@ -23,7 +23,9 @@
     <script type="text/javascript">
 
         let file = null;
-        const filePlaceholder = 'Přesuňte sem datový soubor \npro automatické načtení';
+        let fileList = [];
+        let fileMetadata = [];
+        const filePlaceholder = 'Přesuňte sem datové soubory \npro automatické načtení';
         const calendarOptions = {
             onMonthLabelClick,
             title: "Přehled za poslední rok",
@@ -47,6 +49,19 @@
             console.log("Handlers added")
             console.groupEnd()
         });
+
+        function clearAllFiles() {
+            document.getElementById('file').value = '';
+            fileList = [];
+            fileMetadata = [];
+            $('#loaded-files-container').hide();
+            $('#file').attr('data-title', filePlaceholder);
+            renderTables([]);
+            renderProfile({});
+            renderAddresses([]);
+            renderCosts([]);
+            $("#heatmap").CalendarHeatmap([], calendarOptions);
+        }
 
     </script>
 
@@ -179,9 +194,6 @@
                 </div>
             </div>
         </header>
-        <div class="alert alert-warning m-3" role="alert" style="border-radius: 15px;">
-            <strong>⚠️ Upozornění:</strong> JSON soubory exportované z foodora.cz už neobsahují 'items', tj. neuvidíte, co jste si objednali.
-        </div>
         <main>
             <section>
                 <div id="profile">
@@ -190,13 +202,28 @@
                             <div class="row d-flex justify-content-center align-items-center">
                                 <div class="col-sm-12 col-xl-6">
                                     <button type="button" class="btn btn-primary btn-block"
-                                        onclick="document.getElementById('file').click()">Nahrát JSON soubor z
+                                        onclick="document.getElementById('file').click()">Nahrát JSON soubory z
                                         disku</button>
                                     <button class="btn btn-info col-sm-2" id="loadDemoData"
                                         title="Zobrazí data demo profilu. Není nutné nahrávat soubor.">Demo</button>
+                                    <button class="btn btn-secondary col-sm-2" id="clearFiles"
+                                        title="Smazat všechny nahraté soubory." onclick="clearAllFiles()">Vymazat</button>
                                     <div class="form-group inputDnD">
                                         <input type="file" class="form-control-file text-primary font-weight-bold"
-                                            id="file" accept="application/JSON">
+                                            id="file" accept="application/JSON" multiple>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="container py-1">
+                            <div class="row d-flex justify-content-center align-items-center">
+                                <div class="col-md-12 col-xl-6">
+                                    <div class="card" style="border-radius: 15px;" id="loaded-files-container">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Nahraté soubory:</h5>
+                                            <div id="files-list"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -308,6 +335,11 @@
                 </div>
             </section>
         </main>
+        <div class="alert alert-warning m-3" role="alert" style="border-radius: 15px;">
+            <strong>⚠️ Upozornění:</strong> JSON soubory exportované z foodora.cz po nějaký čas v roce 2025 neobsahovaly
+            'items', tj. neuvidíte, co jste si objednali.
+        </div>
+
     </div>
 </body>
 

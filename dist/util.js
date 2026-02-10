@@ -1,15 +1,80 @@
 function onLoadDemoData() {
 	$("#file").val(null);
-	renderAll(demoData);
-	file = demoData;
+	fileList = [demoData];
+	fileMetadata = [{
+		name: 'Demo Data',
+		minDate: '2024-12-24',
+		maxDate: '2024-12-27',
+		orderCount: demoData.orders.length
+	}];
+	renderAll(combineData(fileList));
+	file = combineData(fileList);
+	renderProfileFiles();
 	$('#file').attr("data-title", filePlaceholder + '\nZobrazuji demo data');
 }
 
+function extractDateString(createdAt) {
+	// Handle format: date:"2026-02-10 13:24:56"  timezone:"Europe/Prague"
+	// Also handle normal format: 2026-02-10 13:24:56 or 2020-06-21 15:17:36
+	if (typeof createdAt !== 'string') return null;
+	
+	const dateMatch = createdAt.match(/date:"([^"]+)"/);
+	if (dateMatch) {
+		return dateMatch[1].substring(0, 10); // Extract YYYY-MM-DD
+	}
+	// Return first 10 chars for normal format (YYYY-MM-DD)
+	return createdAt.substring(0, 10);
+}
+
 function onFileChange(event) {
-	const reader = new FileReader();
-	reader.onload = onReaderLoad;
-	file = event.target.files[0];
-	reader.readAsText(file);
+	const files = event.target.files;
+	let filesLoaded = 0;
+	fileList = [];
+	fileMetadata = [];
+
+	if (files.length === 0) {
+		return;
+	}
+
+	Array.from(files).forEach((fileObj, index) => {
+		const reader = new FileReader();
+		reader.onload = function(e) {
+			try {
+				const parsedData = JSON.parse(e.target.result);
+				if (!parsedData.profile || !parsedData.orders || !_.isArray(parsedData.orders)) {
+					console.error('Invalid structure in file:', fileObj.name, parsedData);
+					return;
+				}
+				fileList.push(parsedData);
+				
+				// Calculate min and max dates for this file
+				if (parsedData.orders.length > 0) {
+					const dates = parsedData.orders.map(o => extractDateString(o.created_at)).filter(d => d).sort();
+					const minDate = dates[0];
+					const maxDate = dates[dates.length - 1];
+					fileMetadata.push({
+						name: fileObj.name,
+						minDate: minDate,
+						maxDate: maxDate,
+						orderCount: parsedData.orders.length
+					});
+				}
+
+				filesLoaded++;
+				if (filesLoaded === files.length) {
+					// All files loaded
+					const combinedData = combineData(fileList);
+					renderAll(combinedData);
+					file = combinedData;
+					renderProfileFiles();
+				}
+			} catch (error) {
+				alert("Chyba při zpracování souboru: " + fileObj.name + ". Podrobnosti v konzoli.")
+				console.error('Error parsing the JSON file', fileObj.name, error);
+			}
+		};
+		reader.readAsText(fileObj);
+	});
 }
 
 function renderAll(file) {
@@ -21,21 +86,51 @@ function renderAll(file) {
 	$("#heatmap").CalendarHeatmap("updateDates", getCalendarData(file.orders));
 }
 
-function onReaderLoad(event) {
-	try {
-		file = JSON.parse(event.target.result);
-	} catch (error) {
-		alert("Chyba při zpracování souboru. Selhalo parsování JSONu. Podrobnosti v konzoli.")
-		console.error('Error parsing the JSON file', error, event.target.result);
-		return;
+function combineData(fileList) {
+	if (fileList.length === 0) {
+		return { profile: {}, addresses: [], orders: [] };
 	}
-	if (!file.profile || !file.orders || !_.isArray(file.orders)) {
-		alert("Nesprávná struktura JSON souboru. Podrobnosti v konzoli.")
-		console.error('Invalid structure', file);
-		return;
+
+	if (fileList.length === 1) {
+		return fileList[0];
 	}
-	renderAll(file);
-	$('#file').attr("data-title", filePlaceholder + '\nNahraný soubor: ' + document.getElementById("file").files[0].name);
+
+	// Use first file's profile and addresses as base
+	const combined = {
+		profile: fileList[0].profile || {},
+		addresses: fileList[0].addresses || [],
+		orders: []
+	};
+
+	// Combine all orders from all files
+	fileList.forEach(file => {
+		if (file.orders && _.isArray(file.orders)) {
+			combined.orders = combined.orders.concat(file.orders);
+		}
+	});
+
+	// Sort all orders by date
+	combined.orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+	return combined;
+}
+
+function renderProfileFiles() {
+	const filesHtml = fileMetadata.map(meta => {
+		return `<div class="mb-2">
+			<strong>${meta.name}</strong>
+			<br>
+			<small class="text-muted">Objednávek: ${meta.orderCount}, Rozsah: ${meta.minDate} až ${meta.maxDate}</small>
+		</div>`;
+	}).join('');
+
+	if (fileMetadata.length > 0) {
+		$('#files-list').html(filesHtml);
+		$('#loaded-files-container').show();
+		$('#file').attr("data-title", filePlaceholder + '\nNahraných souborů: ' + fileMetadata.length);
+	} else {
+		$('#loaded-files-container').hide();
+	}
 }
 
 function renderProfile(profile = {}) {
@@ -160,7 +255,7 @@ function getTotalCost(orders) {
 function getCalendarData(orders) {
 	const calendarData = {};
 	orders.forEach(order => {
-		const date = order.created_at.substring(0, 10);
+		const date = extractDateString(order.created_at);
 		if (!calendarData[date]) {
 			calendarData[date] = {
 				count: 1,
@@ -185,7 +280,11 @@ function onMonthLabelClick(evt) {
 		$('.ch-month').removeClass('border-active').removeClass('opacity-50');
 	} else {
 		// TODO: use moment, not this ugly hack for safari: https://stackoverflow.com/questions/4310953/invalid-date-in-safari
-		orders = file && file.orders.filter(order => new Date(order.created_at.replace(/ /g, "T")).getMonth() === month && new Date(order.created_at.replace(/ /g, "T")).getFullYear() === year) || [];
+		orders = file && file.orders.filter(order => {
+			const dateStr = extractDateString(order.created_at);
+			const date = new Date(dateStr.replace(/ /g, "T"));
+			return date.getMonth() === month && date.getFullYear() === year;
+		}) || [];
 		$('.ch-month').removeClass('border-active').addClass('opacity-50');
 		$(evt.target).parents('.ch-month').addClass('border-active').removeClass('opacity-50');;
 	}
