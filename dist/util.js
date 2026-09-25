@@ -1,4 +1,6 @@
 function onLoadDemoData() {
+	++importGeneration;
+	$("#import-status").text('');
 	$("#file").val(null);
 	fileList = [demoData];
 	fileMetadata = [{
@@ -26,55 +28,100 @@ function extractDateString(createdAt) {
 	return createdAt.substring(0, 10);
 }
 
-function onFileChange(event) {
-	const files = event.target.files;
-	let filesLoaded = 0;
-	fileList = [];
-	fileMetadata = [];
+// A newer import, demo, or clear action invalidates pending file reads.
+let importGeneration = 0;
 
-	if (files.length === 0) {
-		return;
+function validateImport(data) {
+	const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+	if (!object(data) || !object(data.profile) || !Array.isArray(data.orders)) {
+		throw new Error('Očekáván objekt s profile a polem orders.');
 	}
-
-	Array.from(files).forEach((fileObj, index) => {
-		const reader = new FileReader();
-		reader.onload = function(e) {
-			try {
-				const parsedData = JSON.parse(e.target.result);
-				if (!parsedData.profile || !parsedData.orders || !_.isArray(parsedData.orders)) {
-					console.error('Invalid structure in file:', fileObj.name, parsedData);
-					return;
-				}
-				fileList.push(parsedData);
-				
-				// Calculate min and max dates for this file
-				if (parsedData.orders.length > 0) {
-					const dates = parsedData.orders.map(o => extractDateString(o.created_at)).filter(d => d).sort();
-					const minDate = dates[0];
-					const maxDate = dates[dates.length - 1];
-					fileMetadata.push({
-						name: fileObj.name,
-						minDate: minDate,
-						maxDate: maxDate,
-						orderCount: parsedData.orders.length
-					});
-				}
-
-				filesLoaded++;
-				if (filesLoaded === files.length) {
-					// All files loaded
-					const combinedData = combineData(fileList);
-					renderAll(combinedData);
-					file = combinedData;
-					renderProfileFiles();
-				}
-			} catch (error) {
-				alert("Chyba při zpracování souboru: " + fileObj.name + ". Podrobnosti v konzoli.")
-				console.error('Error parsing the JSON file', fileObj.name, error);
-			}
-		};
-		reader.readAsText(fileObj);
+	if (data.addresses !== undefined && (!Array.isArray(data.addresses) || data.addresses.some(a => !object(a) || ['address', 'postcode', 'city'].some(k => a[k] !== undefined && typeof a[k] !== 'string')))) {
+		throw new Error('Neplatné pole addresses.');
+	}
+	for (const key of ['first_name', 'last_name', 'email', 'phone']) {
+		if (data.profile[key] !== undefined && typeof data.profile[key] !== 'string') throw new Error('Neplatné profile.' + key);
+	}
+	data.orders.forEach((order, index) => {
+		const fail = field => { throw new Error('orders[' + index + '].' + field + ': neplatná hodnota.'); };
+		if (!object(order)) fail('order');
+		const date = extractDateString(order.created_at);
+		if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) fail('created_at');
+		if (typeof order.restaurant_name !== 'string') fail('restaurant_name');
+		if (!object(order.cart) || !Number.isFinite(order.cart.total) || !Array.isArray(order.cart.items)) fail('cart');
+		order.cart.items.forEach((item, itemIndex) => {
+			if (!object(item) || typeof item.name !== 'string' || !Number.isFinite(item.quantity) || !Number.isFinite(item.price)) fail('cart.items[' + itemIndex + ']');
+		});
 	});
+	return data;
+}
+
+// Both the file picker and WebMCP pass named JSON strings through this path.
+async function importJsonFiles(sources) {
+	if (!Array.isArray(sources) || !sources.length) return { status: 'error', errors: [{ message: 'Vyberte alespoň jeden soubor.' }] };
+	const generation = ++importGeneration;
+	const results = await Promise.all(sources.map(async (source, index) => {
+		const name = typeof source?.name === 'string' ? source.name : 'JSON ' + (index + 1);
+		try {
+			const content = typeof source?.text === 'function' ? await source.text() : source?.content;
+			if (typeof content !== 'string') throw new Error('Obsah musí být JSON text.');
+			let data;
+			try { data = JSON.parse(content); } catch { throw new Error('Neplatný JSON.'); }
+			validateImport(data);
+			const dates = data.orders.map(o => extractDateString(o.created_at)).sort();
+			return { data, metadata: { name, minDate: dates[0] || null, maxDate: dates[dates.length - 1] || null, orderCount: data.orders.length } };
+		} catch (error) {
+			return { error: { name, message: error.message } };
+		}
+	}));
+	if (generation !== importGeneration) return { status: 'cancelled' };
+	const accepted = results.filter(result => !result.error);
+	const errors = results.filter(result => result.error).map(result => result.error);
+	if (accepted.length) {
+		fileList = accepted.map(result => result.data);
+		fileMetadata = accepted.map(result => result.metadata);
+		file = combineData(fileList);
+		$('.ch-month').removeClass('border-active opacity-50');
+		renderAll(file);
+		renderProfileFiles();
+	}
+	const summary = {
+		status: accepted.length ? (errors.length ? 'partial' : 'success') : 'error',
+		fileCount: accepted.length,
+		orderCount: accepted.reduce((sum, result) => sum + result.metadata.orderCount, 0),
+		minDate: accepted.map(r => r.metadata.minDate).filter(Boolean).sort()[0] || null,
+		maxDate: accepted.map(r => r.metadata.maxDate).filter(Boolean).sort().pop() || null,
+		errors
+	};
+	$('#import-status').text((accepted.length ? 'Načteno souborů: ' + summary.fileCount + ', objednávek: ' + summary.orderCount + '.' : 'Data nebyla změněna.') + (errors.length ? ' ' + errors.map(e => e.name + ': ' + e.message).join(' ') : ''));
+	return summary;
+}
+
+async function onFileChange(event) {
+	const files = Array.from(event.target.files);
+	if (files.length) await importJsonFiles(files);
+}
+
+async function registerImportTool() {
+	if (typeof document.modelContext?.registerTool !== 'function') return;
+	try {
+		await document.modelContext.registerTool({
+			name: 'import_foodora_json',
+			description: 'Import user-provided Foodora/DameJidlo JSON exports into this page. Replaces currently displayed data with valid files from this batch; invalid files are reported and skipped. No local path access or server upload. Returns counts, date range and errors, not profile data.',
+			inputSchema: {
+				type: 'object', additionalProperties: false, required: ['files'],
+				properties: { files: { type: 'array', minItems: 1, items: {
+					type: 'object', additionalProperties: false, required: ['name', 'content'],
+					properties: { name: { type: 'string' }, content: { type: 'string', description: 'JSON export text containing profile, orders and optional addresses.' } }
+				} } }
+			},
+			annotations: { readOnlyHint: false, untrustedContentHint: true },
+			execute: async (input) => importJsonFiles(input?.files)
+		});
+	} catch {
+		// Registration must never prevent ordinary file imports.
+		console.warn('WebMCP import tool could not be registered.');
+	}
 }
 
 function renderAll(file) {
@@ -104,13 +151,13 @@ function combineData(fileList) {
 
 	// Combine all orders from all files
 	fileList.forEach(file => {
-		if (file.orders && _.isArray(file.orders)) {
+		if (file.orders && Array.isArray(file.orders)) {
 			combined.orders = combined.orders.concat(file.orders);
 		}
 	});
 
 	// Sort all orders by date
-	combined.orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+	combined.orders.sort((a, b) => extractDateString(a.created_at).localeCompare(extractDateString(b.created_at)));
 
 	return combined;
 }
@@ -118,9 +165,9 @@ function combineData(fileList) {
 function renderProfileFiles() {
 	const filesHtml = fileMetadata.map(meta => {
 		return `<div class="mb-2">
-			<strong>${meta.name}</strong>
+			<strong>${_.escape(meta.name)}</strong>
 			<br>
-			<small class="text-muted">Objednávek: ${meta.orderCount}, Rozsah: ${meta.minDate} až ${meta.maxDate}</small>
+			<small class="text-muted">Objednávek: ${meta.orderCount}, Rozsah: ${meta.minDate || '—'} až ${meta.maxDate || '—'}</small>
 		</div>`;
 	}).join('');
 
@@ -139,15 +186,15 @@ function renderProfile(profile = {}) {
 		return;
 	}
 
-	const name = profile.first_name + ' ' + profile.last_name;
+	const name = (profile.first_name || '') + ' ' + (profile.last_name || '');
 	$('#profile-name').text(name);
-	$('#profile-email').text(profile.email);
-	$('#profile-phone').text(profile.phone);
+	$('#profile-email').text(profile.email || '');
+	$('#profile-phone').text(profile.phone || '');
 }
 
 function renderAddresses(addresses = []) {
 	const text = addresses.map(a => {
-		return [a.address, a.postcode, a.city].join(', ');
+		return _.escape([a.address, a.postcode, a.city].join(', '));
 	})
 	$('#profile-addresses').html(text.join('<br>'));
 }
@@ -162,6 +209,10 @@ function renderCosts(orders = []) {
 	$('#costs-total').text(total.toLocaleString('cz') + ' Kč');
 	$('#costs-avg').text(parseInt(total / orders.length).toLocaleString('cz') + ' Kč');
 	$('#orders-total').text(orders.length);
+}
+
+function escapeImportText(value) {
+	return _.escape(value);
 }
 
 function renderTables(orders = []) {
@@ -210,10 +261,10 @@ const mealNamesToBeMerged = {
 
 function getMealsByName(orders) {
 	const meals = _.flatMap(orders, order => order.cart.items);
-	const grouped = [];
+	const grouped = Object.create(null);
 
 	meals.forEach(meal => {
-		if (mealNamesToBeMerged[meal.name]) {
+		if (Object.hasOwn(mealNamesToBeMerged, meal.name)) {
 			meal.name = mealNamesToBeMerged[meal.name];
 		}
 		const group = grouped[meal.name];

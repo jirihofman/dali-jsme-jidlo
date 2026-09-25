@@ -46,11 +46,15 @@
             $('#file').on('change', onFileChange);
             $('#file').attr('data-title', filePlaceholder);
             document.getElementById('loadDemoData').addEventListener('click', onLoadDemoData);
+            registerImportTool();
             console.log("Handlers added")
             console.groupEnd()
         });
 
         function clearAllFiles() {
+            ++importGeneration;
+            file = null;
+            $('#import-status').text('');
             document.getElementById('file').value = '';
             fileList = [];
             fileMetadata = [];
@@ -210,7 +214,8 @@
                                         title="Smazat všechny nahraté soubory." onclick="clearAllFiles()">Vymazat</button>
                                     <div class="form-group inputDnD">
                                         <input type="file" class="form-control-file text-primary font-weight-bold"
-                                            id="file" accept="application/JSON" multiple>
+                                            id="file" accept=".json,application/json" multiple>
+                                        <p id="import-status" role="status" aria-live="polite" class="mt-2"></p>
                                     </div>
                                 </div>
                             </div>
@@ -282,7 +287,7 @@
                                             <table id="table-restaurants" class="table">
                                                 <thead>
                                                     <tr>
-                                                        <th data-field="restaurant" class="col-10">Restaurace</th>
+                                                        <th data-formatter="escapeImportText" data-field="restaurant" class="col-10">Restaurace</th>
                                                         <th data-field="count" class="col-2">Počet</th>
                                                     </tr>
                                                 </thead>
@@ -320,7 +325,7 @@
                                             <table id="table-meals" class="table">
                                                 <thead>
                                                     <tr>
-                                                        <th data-field="meal" class="col-10">Jídlo</th>
+                                                        <th data-formatter="escapeImportText" data-field="meal" class="col-10">Jídlo</th>
                                                         <!-- <th data-field="total" class="col-10">Cena</th> -->
                                                         <th data-field="count" class="col-2">Počet</th>
                                                     </tr>
